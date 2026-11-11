@@ -10,7 +10,7 @@ import streamlit as st
 
 from core import config
 from ui import common, nav
-from ui import (page_catalog, page_dashboard, page_inventory, page_orders, page_purchases,
+from ui import (page_analysis, page_catalog, page_dashboard, page_inventory, page_orders, page_purchases,
                 page_reports, page_settings, page_shortages, page_suppliers)
 
 st.set_page_config(page_title=config.APP_SHORT, page_icon="🧪", layout="wide",
@@ -25,15 +25,16 @@ PAGES = {
     nav.PURCHASES: ("المشتريات والدفع", page_purchases.render),
     nav.SUPPLIERS: ("الشركات", page_suppliers.render),
     nav.CATALOG: ("الأصناف", page_catalog.render),
+    nav.ANALYSIS: ("الاستهلاك وتقليل التكلفة", page_analysis.render),
     nav.REPORTS: ("التقارير", page_reports.render),
     nav.SETTINGS: ("الإعدادات", page_settings.render),
 }
 
 
 def login():
-    sec = common.secrets().get("auth", {})
-    staff_pw = sec.get("password", "orange")
-    admin_pw = sec.get("admin_password", "orange-admin")
+    from core import auth
+    info = common.secrets_info()
+    setup = auth.password_setup(info, common.load_db()["settings"])
     c1, c2, c3 = st.columns([1, 1.3, 1])
     with c2:
         if os.path.exists(config.LOGO_PATH):
@@ -46,18 +47,20 @@ def login():
             pw = st.text_input("Password", type="password")
             ok = st.form_submit_button("Sign in", use_container_width=True, type="primary")
         if ok:
-            if pw == admin_pw:
-                role = "admin"
-            elif pw == staff_pw:
-                role = "staff"
-            else:
+            role = auth.check_login(pw, setup)
+            if not role:
                 st.error("Wrong password.")
-                return
-            st.session_state["user"] = {"name": name.strip() or "user", "branch": branch, "role": role}
-            st.rerun()
-        if not sec:
-            st.caption("⚠️ Using default passwords (orange / orange-admin). Set your own in "
-                       "`.streamlit/secrets.toml` → [auth].")
+            else:
+                st.session_state["user"] = {"name": name.strip() or "user", "branch": branch, "role": role}
+                st.rerun()
+        st.caption("🔐 Passwords: " + auth.describe(setup) +
+                   (f" · file: `{info['source']}`" if info["source"] and info["source"] != "Streamlit secrets" else ""))
+        for p in info["problems"]:
+            st.warning(p)
+        if "default" in (setup["staff"]["source"], setup["admin"]["source"]) and not info["problems"]:
+            st.caption("No password found in secrets → defaults are active. In `.streamlit/secrets.toml` write:\n"
+                       "```\n[auth]\npassword = \"...\"\nadmin_password = \"...\"\n```\n"
+                       "or change them inside the app: Settings → 🔐 Passwords.")
 
 
 def sidebar() -> str:
