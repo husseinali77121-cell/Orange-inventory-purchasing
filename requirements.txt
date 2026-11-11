@@ -1,2 +1,7 @@
-streamlit>=1.32
+streamlit>=1.37
 pandas>=2.0
+openpyxl>=3.1
+reportlab>=4.0
+requests>=2.31
+arabic-reshaper>=3.0
+python-bidi>=0.4.2
