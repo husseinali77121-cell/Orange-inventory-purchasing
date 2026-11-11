@@ -80,7 +80,7 @@ def set_default_suppliers(db: dict, overwrite: bool = False) -> int:
 if __name__ == "__main__":
     xlsx = sys.argv[1] if len(sys.argv) > 1 else None
     db, rep = build(xlsx)
-    storage.write_json_atomic(config.LOCAL_DB_PATH, db)
+    storage.write_json_atomic(config.STARTER_DB_PATH, db)
     print("items", len(db["items"]), "suppliers", len(db["suppliers"]),
           "counts", len(db["counts"]), "invoices", len(db["invoices"]))
     if rep:

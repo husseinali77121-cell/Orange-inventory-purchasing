@@ -379,3 +379,71 @@ def backup_xlsx(db: dict) -> bytes:
              p.get("notes")] for inv in db.get("invoices", []) for p in inv.get("payments", [])]
     _table(ws, 1, ["invoice", "supplier", "date", "amount", "method", "ref", "notes"], rows)
     return _bytes(wb)
+
+
+# =============================================================== workload & analysis
+def workload_template_xlsx(db: dict, years: list[int]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cases"
+    ws.cell(row=1, column=1, value="Number of cases (patients) per branch and period").font = Font(bold=True, size=13)
+    ws.cell(row=2, column=1, value="One row per branch per period. A year alone in 'Period' is enough "
+                                   "(From/To can stay empty). Branch: Diamond or La Cite.").font = Font(size=9, color="666666")
+    existing = {(w.get("date_from"), w.get("date_to"), w.get("branch")): w for w in db.get("workload", [])}
+    rows = []
+    for y in years:
+        for b in config.BRANCHES:
+            w = existing.get((f"{y}-01-01", f"{y}-12-31", b), {})
+            rows.append([str(y), date(y, 1, 1), date(y, 12, 31), b, w.get("cases"), w.get("notes", "")])
+    _table(ws, 4, ["Period", "From", "To", "Branch", "Cases", "Notes"], rows, [12, 12, 12, 12, 12, 30])
+    for row in ws.iter_rows(min_row=5, min_col=2, max_col=3):
+        for c in row:
+            c.number_format = "dd/mm/yyyy"
+    dv = DataValidation(type="list", formula1='"Diamond,La Cite"', allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add("D5:D200")
+    ws2 = wb.create_sheet("Tests")
+    ws2.cell(row=1, column=1, value="Optional: number of tests per test (from the LIS) for the same periods").font = Font(bold=True)
+    ws2.cell(row=2, column=1, value="Test = catalog item name (see sheet Catalog). Needs 'Units per pack' "
+                                    "(tests per kit) in the catalog to compare with what was bought.").font = Font(size=9, color="666666")
+    _table(ws2, 4, ["Period", "From", "To", "Branch", "Test", "Count"], [], [12, 12, 12, 12, 26, 10])
+    ws3 = wb.create_sheet("Catalog")
+    _table(ws3, 1, ["Item", "Group", "Units per pack", "Expected per case"],
+           [[i["name"], i["group"], i.get("units_per_pack"), i.get("expected_per_case")]
+            for i in logic.sorted_items(db)], [28, 12, 14, 16])
+    return _bytes(wb)
+
+
+def analysis_xlsx(cons: dict | None, cost: dict | None, title: str) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Summary"
+    ws.cell(row=1, column=1, value=title).font = Font(bold=True, size=14)
+    r = 3
+    if cons:
+        for k, v in cons["summary"].items():
+            ws.cell(row=r, column=1, value=k)
+            ws.cell(row=r, column=2, value=v)
+            r += 1
+    if cost:
+        ws.cell(row=r + 1, column=1, value="Total spend")
+        ws.cell(row=r + 1, column=2, value=cost["total"])
+        ws.cell(row=r + 2, column=1, value="Cost per case")
+        ws.cell(row=r + 2, column=2, value=cost["cost_per_case"])
+    ws.column_dimensions["A"].width = 28
+    ws.column_dimensions["B"].width = 16
+
+    def sheet(name, rows, money=()):
+        w = wb.create_sheet(name[:30])
+        cols = [c for c in (rows[0].keys() if rows else ["(empty)"]) if c != "item_id"]
+        _table(w, 1, cols, [[x.get(c) for c in cols] for x in rows], [22] * len(cols), money_cols=money)
+    if cons:
+        sheet("Consumption", cons["rows"], ("Avg price", "Spend (cur)", "Excess cost"))
+    if cost:
+        sheet("Opportunities", cost["opportunities"], ("Est. saving",))
+        sheet("Pareto ABC", cost["pareto"], ("Spend", "Per case"))
+        sheet("Price increases", cost["price_up"], ("Was", "Now", "Saving if old price"))
+        sheet("Cheaper supplier", cost["spread"], ("Last price", "Best price", "Possible saving"))
+        sheet("Expired stock", cost["waste"], ("Est. value",))
+        sheet("Delivery fees", cost["delivery"], ("Delivery fees", "Saving if orders combined (½)"))
+    return _bytes(wb)

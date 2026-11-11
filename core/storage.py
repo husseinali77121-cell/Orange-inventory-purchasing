@@ -19,13 +19,14 @@ from typing import Any
 
 from . import config
 
-COLLECTIONS = ["items", "suppliers", "counts", "purchase_orders", "invoices"]
+COLLECTIONS = ["items", "suppliers", "counts", "purchase_orders", "invoices", "workload"]
 ID_PREFIX = {
     "items": ("IT", 4, False),
     "suppliers": ("SUP", 3, False),
     "counts": ("CNT", 4, True),
     "purchase_orders": ("PO", 4, True),
     "invoices": ("INV", 4, True),
+    "workload": ("WL", 4, False),
 }
 AUDIT_MAX = 3000
 
@@ -40,6 +41,14 @@ def empty_db() -> dict:
     for c in COLLECTIONS:
         db[c] = []
     return db
+
+
+def starter_db() -> dict:
+    """First start: the starter database shipped with the app, else an empty one."""
+    if os.path.exists(config.STARTER_DB_PATH):
+        with open(config.STARTER_DB_PATH, "r", encoding="utf-8") as f:
+            return normalize_db(json.load(f))
+    return empty_db()
 
 
 def normalize_db(db: dict) -> dict:
@@ -158,7 +167,7 @@ class LocalBackend:
 
     def load(self) -> tuple[dict, Any]:
         if not os.path.exists(self.path):
-            return empty_db(), None
+            return starter_db(), None
         with open(self.path, "r", encoding="utf-8") as f:
             return normalize_db(json.load(f)), None
 
@@ -192,7 +201,7 @@ class GitHubBackend:
         url = f"https://api.github.com/repos/{self.repo}/contents/{self.path}?ref={self.branch}"
         r = self._req("GET", url)
         if r.status_code == 404:
-            return empty_db(), None
+            return starter_db(), None
         if r.status_code != 200:
             raise RuntimeError(f"GitHub read failed ({r.status_code}): {r.text[:200]}")
         meta = r.json()

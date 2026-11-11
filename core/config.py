@@ -12,7 +12,8 @@ ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
 LOGO_PATH = os.path.join(ASSETS_DIR, "logo.png")
 DATA_DIR = os.path.join(BASE_DIR, "data")
-LOCAL_DB_PATH = os.path.join(DATA_DIR, "inventory_db.json")
+LOCAL_DB_PATH = os.path.join(DATA_DIR, "inventory_db.json")      # your live data (never shipped in updates)
+STARTER_DB_PATH = os.path.join(DATA_DIR, "starter_db.json")     # catalog + counts + old purchases, used once
 
 # ---------------------------------------------------------------- branches
 BRANCHES = ["Diamond", "La Cite"]
@@ -73,6 +74,8 @@ DEFAULT_SETTINGS = {
     "po_blank_rows": 23,
     "expiry_warn_days": 60,
     "currency": "EGP",
+    "consumption_alert_pct": 30,       # deviation that flags abnormal consumption
+    "reagent_overhead_pct": 15,        # QC / calibration / repeats allowance on test counts
     "general_manager": "Dr/Tarik El shafie",
     "coo": "Dr/ Hussein Ali",
     "inventory_manager_supplies": "Dr/Shereen Ahmed",

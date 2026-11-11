@@ -26,7 +26,7 @@ SUPPLIES = [
     ("Syringe 5 ml", "Syringe", "box", "pack", "Eldawlia", "D&L", "5 ml syringe"),
     ("Syringe 3 ml", "Syringe", "box", "pack", "Eldawlia", "D&L", "3 ml syringe"),
     ("Sterile Cups", "Consumable", "piece", "piece", "", "D&L", "cup sterile, sterile cup"),
-    ("Vacutainer", "Consumable", "piece", "piece", "Eldawlia", "D&L", "vacutainer"),
+    ("Vacutainer", "Consumable", "piece", "pack", "Eldawlia", "D&L", "vacutainer"),
     ("Butterfly", "Consumable", "piece", "piece", "", "D&L", "butterfly, butter fly"),
     ("Blue Tips", "Tips", "pack", "pack", "", "D&L", "blue tip"),
     ("Yellow Tips", "Tips", "pack", "pack", "", "D&L", "yellow tip"),
