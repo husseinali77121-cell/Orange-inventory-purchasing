@@ -7,9 +7,11 @@ import streamlit as st
 from core import build_seed, config, logic, storage
 from ui import common
 
+NUMS = ("Order", "Min qty", "Reorder qty", "Units per pack", "Expected per case")
 COLS = {"order": "Order", "name": "Name", "group": "Group", "type": "Type", "unit": "Count unit",
         "purchase_unit": "Purchase unit", "default_brand": "Default brand", "default_supplier_id": "Default supplier",
-        "branches": "Branches", "min_qty": "Min qty", "reorder_qty": "Reorder qty", "aliases": "Other names",
+        "branches": "Branches", "min_qty": "Min qty", "reorder_qty": "Reorder qty",
+        "units_per_pack": "Units per pack", "expected_per_case": "Expected per case", "aliases": "Other names",
         "active": "Active", "notes": "Notes"}
 
 
@@ -33,9 +35,9 @@ def render():
         r["id"] = i["id"]
         rows.append(r)
     base = pd.DataFrame(rows, columns=list(COLS.values()) + ["id"])
-    for cnum in ("Order", "Min qty", "Reorder qty"):
+    for cnum in NUMS:
         base[cnum] = pd.to_numeric(base[cnum], errors="coerce").astype("float64")
-    for ctext in set(COLS.values()) - {"Order", "Min qty", "Reorder qty", "Active"}:
+    for ctext in set(COLS.values()) - set(NUMS) - {"Active"}:
         base[ctext] = base[ctext].astype("object")
     base["Active"] = base["Active"].astype(bool)
     stamp = d["audit"][-1]["ts"] if d.get("audit") else ""
@@ -54,6 +56,12 @@ def render():
                                                          help="Where the item is used: D, L or D&L"),
             "Min qty": st.column_config.NumberColumn(min_value=0.0, width="small"),
             "Reorder qty": st.column_config.NumberColumn(min_value=0.0, width="small"),
+            "Units per pack": st.column_config.NumberColumn(
+                min_value=0.0, width="small",
+                help="Count units in one purchase unit – e.g. tests per kit (2x25 ml = 250 tests) or tubes per pack (100)"),
+            "Expected per case": st.column_config.NumberColumn(
+                min_value=0.0, width="small", format="%.3f",
+                help="Normal use per patient in count units – e.g. 1 gel tube, 0.5 syringe. Optional"),
             "Other names": st.column_config.TextColumn(help="Comma separated – used to match old purchase lines"),
             "Active": st.column_config.CheckboxColumn(width="small"),
         })
@@ -110,7 +118,7 @@ def save(d, items, ed, sup_by_name):
         rec = {}
         for k, v in COLS.items():
             val = r.get(v)
-            if k in ("order", "min_qty", "reorder_qty"):
+            if k in ("order", "min_qty", "reorder_qty", "units_per_pack", "expected_per_case"):
                 rec[k] = logic.to_float(val) or 0
             elif k == "active":
                 rec[k] = bool(val) if val is not None else True

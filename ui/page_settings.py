@@ -17,14 +17,17 @@ def render():
         st.info("Settings are for the admin account.")
         return
     d = common.db()
-    t = st.tabs(["🏥 Lab & branches", "💾 Data & backup", "📥 Import old purchasing file", "🕘 Activity log"])
+    t = st.tabs(["🏥 Lab & branches", "🔐 Passwords", "💾 Data & backup", "📥 Import old purchasing file",
+                 "🕘 Activity log"])
     with t[0]:
         lab_tab(d)
     with t[1]:
-        data_tab(d)
+        password_tab(d)
     with t[2]:
-        import_tab(d)
+        data_tab(d)
     with t[3]:
+        import_tab(d)
+    with t[4]:
         log = list(reversed(d.get("audit", [])))[:300]
         st.dataframe(pd.DataFrame(log), hide_index=True, use_container_width=True, height=500)
 
@@ -58,6 +61,43 @@ def lab_tab(d):
                      "currency": cur, "inventory_manager_supplies": im_s, "inventory_manager_chemicals": im_c,
                      "expiry_warn_days": int(warn), "po_blank_rows": int(rows), "branches": branches}
             if common.commit([storage.op_settings(patch)], "Settings updated"):
+                st.rerun()
+
+
+def password_tab(d):
+    from core import auth
+    info = common.secrets_info()
+    setup = auth.password_setup(info, d["settings"])
+    st.markdown(f"**Active now:** {auth.describe(setup)}")
+    st.caption(f"Secrets read from: {info['source'] or '— nothing found —'}")
+    for p in info["problems"]:
+        st.warning(p)
+    st.caption("A password changed here is saved (encrypted, not readable) with the data and wins over the "
+               "secrets file. 'Use secrets file again' removes it.")
+    for role, label in (("staff", "Staff password (both branches)"), ("admin", "Admin password")):
+        with st.form(f"pw_{role}", clear_on_submit=True):
+            st.markdown(f"**{label}** – now: {setup[role]['source']}")
+            c = st.columns(2)
+            p1 = c[0].text_input("New password", type="password", key=f"pw1_{role}")
+            p2 = c[1].text_input("Repeat", type="password", key=f"pw2_{role}")
+            c = st.columns(2)
+            save = c[0].form_submit_button("💾 Change", type="primary")
+            reset = c[1].form_submit_button("↩️ Use secrets file again")
+        if save:
+            other = "admin" if role == "staff" else "staff"
+            if len(p1.strip()) < 4:
+                st.error("At least 4 characters.")
+            elif p1 != p2:
+                st.error("The two entries are different.")
+            elif auth.check_login(p1, {other: setup[other], role: {"plain": None, "hash": None}}) == other:
+                st.error(f"Must be different from the {other} password.")
+            else:
+                app_auth = {**(d["settings"].get("auth") or {}), role: auth.hash_password(p1.strip())}
+                if common.commit([storage.op_settings({"auth": app_auth})], f"{role} password changed"):
+                    st.success("Changed – use it from the next sign-in.")
+        if reset:
+            app_auth = {k: v for k, v in (d["settings"].get("auth") or {}).items() if k != role}
+            if common.commit([storage.op_settings({"auth": app_auth})], f"{role} password back to secrets/default"):
                 st.rerun()
 
 

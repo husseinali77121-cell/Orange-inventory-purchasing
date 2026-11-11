@@ -11,11 +11,14 @@ from core import config, logic, storage
 
 
 # ------------------------------------------------------------------ secrets / store
+def secrets_info() -> dict:
+    """{'data', 'source', 'problems'} – see core/auth.py (finds the file even if Streamlit doesn't)."""
+    from core import auth
+    return auth.load_secrets(st.secrets)
+
+
 def secrets() -> dict:
-    try:
-        return {k: dict(v) if hasattr(v, "keys") else v for k, v in st.secrets.items()}
-    except Exception:  # noqa: BLE001 - no secrets file
-        return {}
+    return secrets_info()["data"]
 
 
 def get_store() -> storage.Store:

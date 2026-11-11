@@ -13,6 +13,17 @@ from ui import common, nav
 def render():
     d = common.db()
     common.page_title("Dashboard", "لوحة المتابعة", "What needs attention – stock, expiry, orders and payments.")
+    q = st.columns(4)
+    if q[0].button("📨 New purchase order (manual)", use_container_width=True, type="primary",
+                   help="Write any need directly – not only shortages from the count"):
+        common.go(nav.ORDERS, po_mode="new")
+    if q[1].button("🧾 Record a purchase / delivery", use_container_width=True,
+                   help="An invoice that arrived without a purchase order"):
+        common.go(nav.PURCHASES, inv_mode="new")
+    if q[2].button("📋 Start an inventory count", use_container_width=True):
+        common.go(nav.INVENTORY)
+    if q[3].button("📉 Consumption & cost", use_container_width=True):
+        common.go(nav.ANALYSIS)
     warn = int(d["settings"].get("expiry_warn_days", 60))
     choice = st.radio("Branch", ["All", *config.BRANCHES], horizontal=True,
                       format_func=lambda b: config.BRANCH_LABEL.get(b, b), key="dash_branch")

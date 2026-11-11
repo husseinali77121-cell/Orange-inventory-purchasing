@@ -61,7 +61,14 @@ def editor(df, key, names, disabled_received=True):
 def render():
     common.page_title("Purchase orders", "طلبات الشراء",
                       "Printed on the lab's order form with the company name and phone – send by WhatsApp or print.")
-    t1, t2 = st.tabs(["📋 Orders", "➕ New order"])
+    if st.session_state.get("po_mode") == "new":
+        if st.button("← Back to the orders list"):
+            st.session_state.pop("po_mode", None)
+            st.rerun()
+        st.markdown("#### ➕ New purchase order – manual entry (any item, not only shortages)")
+        new_tab()
+        return
+    t1, t2 = st.tabs(["📋 Orders", "➕ New order (manual)"])
     with t1:
         list_tab()
     with t2:
@@ -225,4 +232,6 @@ def new_tab():
         if ids:
             st.session_state["po_new_ver"] = ver + 1
             st.session_state["po_sel"] = ids[0]
+            if st.session_state.pop("po_mode", None):
+                st.rerun()                  # straight to the saved order (print / WhatsApp)
             st.success(f"Saved as {ids[0]} – open it in the **Orders** tab to print or send.")

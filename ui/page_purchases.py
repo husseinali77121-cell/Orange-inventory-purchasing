@@ -94,14 +94,21 @@ def render():
             st.rerun()
         invoice_form(d, draft, "draft", is_new=True)
         return
-    t1, t2, t3 = st.tabs(["🧾 Invoices", "➕ New purchase", "💳 Payments due"])
+    ver = st.session_state.get("inv_new_ver", 0)
+    blank = {"date": date.today().isoformat(), "supplier_id": "", "branch": common.user()["branch"],
+             "invoice_no": "", "po_id": "", "lines": [], "delivery_fee": 0.0, "discount": 0.0,
+             "payments": [], "notes": "", "needs_review": False, "source": "app"}
+    if st.session_state.get("inv_mode") == "new":
+        if st.button("← Back to invoices"):
+            st.session_state.pop("inv_mode", None)
+            st.rerun()
+        st.markdown("#### ➕ New purchase – manual entry (with or without a purchase order)")
+        invoice_form(d, blank, f"new{ver}", is_new=True)
+        return
+    t1, t2, t3 = st.tabs(["🧾 Invoices", "➕ New purchase (manual)", "💳 Payments due"])
     with t1:
         list_tab(d)
     with t2:
-        ver = st.session_state.get("inv_new_ver", 0)
-        blank = {"date": date.today().isoformat(), "supplier_id": "", "branch": common.user()["branch"],
-                 "invoice_no": "", "po_id": "", "lines": [], "delivery_fee": 0.0, "discount": 0.0,
-                 "payments": [], "notes": "", "needs_review": False, "source": "app"}
         invoice_form(d, blank, f"new{ver}", is_new=True)
     with t3:
         due_tab(d)
@@ -223,6 +230,7 @@ def invoice_form(d, inv, key, is_new):
             if is_new:
                 st.session_state["inv_new_ver"] = st.session_state.get("inv_new_ver", 0) + 1
                 st.session_state["inv_sel"] = ids[0]
+                st.session_state.pop("inv_mode", None)
             st.rerun()
 
 
